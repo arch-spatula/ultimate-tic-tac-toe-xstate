@@ -1,24 +1,48 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+  <div>{{ snapshot.context.game }}</div>
+  <button @click="start">start</button>
+  <button @click="decision">decision</button>
+  <button @click="restart">restart</button>
 </template>
+
+<script setup lang="ts">
+import { useCssModule } from 'vue'
+import { createMachine, assign } from 'xstate'
+import { useMachine } from '@xstate/vue'
+
+// 대기(wait) -시작-> 플레이(play) -판정-> 승부(result) -재시작-> 대기
+// O -> X -> O
+//
+const gameMachine = createMachine({
+  id: 'game',
+  types: {} as {
+    context: {
+      game: 'wait' | 'play' | 'result'
+    }
+    events: { type: 'start' } | { type: 'decision' } | { type: 'restart' }
+  },
+  context: { game: 'wait' },
+  on: {
+    start: { actions: assign({ game: 'play' }) },
+    decision: { actions: assign({ game: 'result' }) },
+    restart: { actions: assign({ game: 'wait' }) }
+  }
+})
+
+const { send, snapshot } = useMachine(gameMachine)
+
+function start() {
+  send({ type: 'start' })
+}
+
+function decision() {
+  send({ type: 'decision' })
+}
+
+function restart() {
+  send({ type: 'restart' })
+}
+</script>
 
 <style scoped>
 header {
