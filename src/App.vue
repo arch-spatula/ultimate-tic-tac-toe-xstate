@@ -19,12 +19,18 @@
             <ul class="inner-row">
               <li v-for="(innerRow, innerRowIdx) in outerCol" :key="innerRowIdx">
                 <ul class="inner-col">
-                  <li v-for="(innerCol, innerColId) in innerRow" :key="innerColId">
+                  <li v-for="(innerCol, innerColIdx) in innerRow" :key="innerColIdx">
                     <button
-                      class="square-btn"
-                      @click="move(innerColId, innerRowIdx, outerColIdx, outerRowIdx)"
+                      :class="{
+                        'square-btn': true,
+                        'active-board':
+                          snapshot.context.activeIdx.outerColIdx === outerColIdx &&
+                          snapshot.context.activeIdx.outerRowIdx === outerRowIdx
+                      }"
+                      @click="move(innerColIdx, innerRowIdx, outerColIdx, outerRowIdx)"
                     >
-                      <p>{{ innerCol }}</p>
+                      <IconX v-if="innerCol === 'X'" color="#EF4444" />
+                      <IconCircle v-if="innerCol === 'O'" color="#3B82F6" />
                     </button>
                   </li>
                 </ul>
@@ -40,6 +46,7 @@
 <script setup lang="ts">
 import { createMachine, assign } from 'xstate'
 import { useMachine } from '@xstate/vue'
+import { IconCircle, IconX } from '@tabler/icons-vue'
 
 const INIT_SQUARE = 3
 
@@ -59,7 +66,7 @@ const gameMachine = createMachine({
       turn: 'O' | 'X'
       square: ('O' | 'X' | 'empty')[][][][]
       size: number
-      activeIdx: number
+      activeIdx: { outerColIdx: number; outerRowIdx: number }
     }
     events:
       | { type: 'start' }
@@ -85,7 +92,7 @@ const gameMachine = createMachine({
       ])
     ]),
     size: 3,
-    activeIdx: -1
+    activeIdx: { outerColIdx: -1, outerRowIdx: -1 }
   },
   on: {
     start: { actions: assign({ game: 'play' }) },
@@ -100,18 +107,45 @@ const gameMachine = createMachine({
       })
     },
     move: {
+      guard: ({ context, event }) => {
+        // 시작하는 턴에 허용
+        if (context.activeIdx.outerColIdx === -1 && context.activeIdx.outerRowIdx === -1)
+          return true
+
+        // 활성화된 보드만 허용
+        if (
+          context.activeIdx.outerColIdx !== event.value.outerColIdx ||
+          context.activeIdx.outerRowIdx !== event.value.outerRowIdx
+        )
+          return false
+
+        // empty가 아닐 때만 OX 표시 허용
+        if (
+          context.square[event.value.outerRowIdx][event.value.outerColIdx][event.value.innerRowIdx][
+            event.value.innerColIdx
+          ] !== 'empty'
+        )
+          return false
+
+        return true
+      },
       actions: assign({
         turn: ({ context }) => {
           if (context.turn === 'O') return 'X'
           else return 'O'
         },
         activeIdx: ({ event }) => {
-          return event.value.innerColIdx + event.value.innerRowIdx * 3
+          return { outerColIdx: event.value.innerColIdx, outerRowIdx: event.value.innerRowIdx }
         },
         square: ({ event, context }) => {
-          context.square[event.value.outerRowIdx][event.value.outerColIdx][event.value.innerRowIdx][
-            event.value.innerColIdx
-          ] = context.turn
+          if (
+            context.square[event.value.outerRowIdx][event.value.outerColIdx][
+              event.value.innerRowIdx
+            ][event.value.innerColIdx] === 'empty'
+          )
+            context.square[event.value.outerRowIdx][event.value.outerColIdx][
+              event.value.innerRowIdx
+            ][event.value.innerColIdx] = context.turn
           return context.square
         }
       })
@@ -180,11 +214,15 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
   justify-content: center;
   border-radius: 0.5rem;
   &:hover {
-    background-color: #f3f4f6;
+    background-color: #e5e7eb;
     cursor: pointer;
   }
   &:active {
-    background-color: #e5e7eb;
+    background-color: #d1d5db;
   }
+}
+
+.active-board {
+  background-color: #f3f4f6;
 }
 </style>

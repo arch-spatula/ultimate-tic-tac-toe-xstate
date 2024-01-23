@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@tabler/icons-vue':
+    specifier: ^2.46.0
+    version: 2.46.0(vue@3.3.11)
   '@xstate/vue':
     specifier: ^3.0.3
     version: 3.0.3(vue@3.3.11)(xstate@5.5.1)
@@ -572,6 +575,19 @@ packages:
   /@sinclair/typebox@0.27.8:
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
     dev: true
+
+  /@tabler/icons-vue@2.46.0(vue@3.3.11):
+    resolution: {integrity: sha512-oAHyIjMsbcUPDQM8hzl2dtw6w0SJoeBjpSxx24zZ0qrgkj5KUhST1rKQPkxHifPs/0vt970XMOf9TDgyFtnn8g==}
+    peerDependencies:
+      vue: '>=3.0.1'
+    dependencies:
+      '@tabler/icons': 2.46.0
+      vue: 3.3.11(typescript@5.3.2)
+    dev: false
+
+  /@tabler/icons@2.46.0:
+    resolution: {integrity: sha512-Q5G8Pj5IO+Uhc6pszpu5/hGYY018JwEzzvmuqr+gKJtfIvAHA3umpwUilMRLEy89p+WCP+YsDhicMhfBCCv1qA==}
+    dev: false
 
   /@tsconfig/node18@18.2.2:
     resolution: {integrity: sha512-d6McJeGsuoRlwWZmVIeE8CUA27lu6jLjvv1JzqmpsytOYYbVi1tHZEnwCNVOXnj4pyLvneZlFlpXUK+X9wBWyw==}
