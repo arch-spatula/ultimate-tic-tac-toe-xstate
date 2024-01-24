@@ -1,9 +1,15 @@
 <template>
   <div>현재 게임 상태: {{ snapshot.context.game }}</div>
   <div>
-    <button @click="start">start</button>
-    <button @click="decision">decision</button>
-    <button @click="restart">restart</button>
+    <div>
+      <button @click="start">start</button>
+    </div>
+    <div>
+      <button @click="decision">decision</button>
+    </div>
+    <div>
+      <button @click="restart">restart</button>
+    </div>
   </div>
   <div>현재 플레이어 턴: {{ snapshot.context.turn }}</div>
   <div>
@@ -17,15 +23,27 @@
         <ul class="outer-col">
           <li v-for="(outerCol, outerColIdx) in outerRow" :key="outerColIdx">
             <ul class="inner-row">
-              <li v-for="(innerRow, innerRowIdx) in outerCol" :key="innerRowIdx">
+              <div v-if="snapshot.context.board[outerRowIdx][outerColIdx] !== 'empty'">
+                <IconX
+                  v-if="snapshot.context.board[outerRowIdx][outerColIdx] === 'X'"
+                  color="#EF4444"
+                />
+                <IconCircle
+                  v-if="snapshot.context.board[outerRowIdx][outerColIdx] === 'O'"
+                  color="#3B82F6"
+                />
+              </div>
+              <li v-else v-for="(innerRow, innerRowIdx) in outerCol" :key="innerRowIdx">
                 <ul class="inner-col">
                   <li v-for="(innerCol, innerColIdx) in innerRow" :key="innerColIdx">
                     <button
                       :class="{
                         'square-btn': true,
                         'active-board':
-                          snapshot.context.activeIdx.outerColIdx === outerColIdx &&
-                          snapshot.context.activeIdx.outerRowIdx === outerRowIdx
+                          (snapshot.context.activeIdx.outerColIdx === -1 &&
+                            snapshot.context.activeIdx.outerRowIdx === -1) ||
+                          (snapshot.context.activeIdx.outerColIdx === outerColIdx &&
+                            snapshot.context.activeIdx.outerRowIdx === outerRowIdx)
                       }"
                       @click="move(innerColIdx, innerRowIdx, outerColIdx, outerRowIdx)"
                     >
@@ -48,14 +66,16 @@ import { createMachine, assign } from 'xstate'
 import { useMachine } from '@xstate/vue'
 import { IconCircle, IconX } from '@tabler/icons-vue'
 
+type Player = 'O' | 'X'
+
+type Mark = Player | 'empty'
+
 const INIT_SQUARE = 3
 
-const createEmptySquare = (size: number): Array<'O' | 'X' | 'empty'> => {
+const createEmptySquare = (size: number): Array<Mark> => {
   return Array.from({ length: size }, () => 'empty')
 }
 
-// 대기(wait) -시작-> 플레이(play) -판정-> 승부(result) -재시작-> 대기
-// O -> X -> O
 // 시작할 때 칸수 정의
 // 칸수에 해당하는 중첩 배열 만들기
 const gameMachine = createMachine({
@@ -63,8 +83,9 @@ const gameMachine = createMachine({
   types: {} as {
     context: {
       game: 'wait' | 'play' | 'result'
-      turn: 'O' | 'X'
-      square: ('O' | 'X' | 'empty')[][][][]
+      turn: Player
+      square: Mark[][][][]
+      board: Mark[][]
       size: number
       activeIdx: { outerColIdx: number; outerRowIdx: number }
     }
@@ -82,6 +103,9 @@ const gameMachine = createMachine({
             outerRowIdx: number
           }
         }
+      | { type: 'setSize' }
+    // increment
+    // decrement
   },
   context: {
     game: 'wait',
@@ -91,13 +115,29 @@ const gameMachine = createMachine({
         ...Array.from({ length: INIT_SQUARE }, () => createEmptySquare(INIT_SQUARE))
       ])
     ]),
+    board: Array.from({ length: INIT_SQUARE }, () => createEmptySquare(INIT_SQUARE)),
     size: 3,
     activeIdx: { outerColIdx: -1, outerRowIdx: -1 }
   },
   on: {
-    start: { actions: assign({ game: 'play' }) },
-    decision: { actions: assign({ game: 'result' }) },
-    restart: { actions: assign({ game: 'wait', turn: 'O', square: [] }) },
+    start: {
+      guard: ({ context }) => {
+        return context.game === 'wait'
+      },
+      actions: assign({ game: 'play' })
+    },
+    decision: {
+      guard: ({ context }) => {
+        return context.game === 'play'
+      },
+      actions: assign({ game: 'result' })
+    },
+    restart: {
+      guard: ({ context }) => {
+        return context.game === 'result'
+      },
+      actions: assign({ game: 'wait', turn: 'O', square: [] })
+    },
     toggle: {
       actions: assign({
         turn: ({ context }) => {
@@ -108,6 +148,7 @@ const gameMachine = createMachine({
     },
     move: {
       guard: ({ context, event }) => {
+        if (context.game !== 'play') return false
         // 시작하는 턴에 허용
         if (context.activeIdx.outerColIdx === -1 && context.activeIdx.outerRowIdx === -1)
           return true
@@ -147,10 +188,60 @@ const gameMachine = createMachine({
               event.value.innerRowIdx
             ][event.value.innerColIdx] = context.turn
           return context.square
+        },
+        board: ({ event, context }) => {
+          const currentBoard = context.square[event.value.outerRowIdx][event.value.outerColIdx]
+          // 가로 검증
+          currentBoard.forEach((row) => {
+            const set = new Set(row)
+            if (set.size === 1) {
+              if (set.has('O')) {
+                context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'O'
+                return context.board
+              }
+              if (set.has('X')) {
+                context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'X'
+                return context.board
+              }
+            }
+          })
+          // 세로 검증
+
+          // 대각선 검증
+          const leftToRight = new Set<Mark>()
+          const rightToLeft = new Set<Mark>()
+          for (let i = 0; i < context.size; i++) {
+            leftToRight.add(currentBoard[i][i])
+            rightToLeft.add(currentBoard[i][context.size - i - 1])
+          }
+
+          if (leftToRight.size === 1) {
+            if (leftToRight.has('O')) {
+              context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'O'
+              return context.board
+            }
+            if (leftToRight.has('X')) {
+              context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'X'
+              return context.board
+            }
+          }
+
+          if (rightToLeft.size === 1) {
+            if (rightToLeft.has('O')) {
+              context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'O'
+              return context.board
+            }
+            if (rightToLeft.has('X')) {
+              context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'X'
+              return context.board
+            }
+          }
+
+          return context.board
         }
       })
-    }
-    // setSize
+    },
+    setSize: { actions: assign({}) }
   }
 })
 
@@ -208,7 +299,7 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
   all: unset;
   width: 3.75rem;
   height: 3.75rem;
-  background-color: #f9fafb;
+  background-color: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,6 +314,6 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
 }
 
 .active-board {
-  background-color: #f3f4f6;
+  background-color: #f9fafb;
 }
 </style>
