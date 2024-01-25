@@ -205,7 +205,24 @@ const gameMachine = createMachine({
               }
             }
           })
+
           // 세로 검증
+          for (let j = 0; j < context.size; j++) {
+            const col = new Set<Mark>()
+            for (let i = 0; i < context.size; i++) {
+              col.add(currentBoard[i][j])
+            }
+            if (col.size === 1) {
+              if (col.has('O')) {
+                context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'O'
+                return context.board
+              }
+              if (col.has('X')) {
+                context.board[event.value.outerRowIdx][event.value.outerColIdx] = 'X'
+                return context.board
+              }
+            }
+          }
 
           // 대각선 검증
           const leftToRight = new Set<Mark>()
