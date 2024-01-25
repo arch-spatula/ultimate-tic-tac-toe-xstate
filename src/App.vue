@@ -13,8 +13,8 @@
   </div>
   <div>현재 플레이어 턴: {{ snapshot.context.turn }}</div>
   <div>
-    <button @click="toggle">toggle</button>
-    <div>{{ snapshot.context.activeIdx }}</div>
+    <button @click="increment">increment</button>
+    <button @click="decrement">decrement</button>
   </div>
   <div class="board">
     <div>보드</div>
@@ -88,6 +88,7 @@ const gameMachine = createMachine({
       board: Mark[][]
       size: number
       activeIdx: { outerColIdx: number; outerRowIdx: number }
+      // 승부, o x draw
     }
     events:
       | { type: 'start' }
@@ -103,9 +104,9 @@ const gameMachine = createMachine({
             outerRowIdx: number
           }
         }
-      | { type: 'setSize' }
-    // increment
-    // decrement
+      | { type: 'setSize'; value: number }
+      | { type: 'increment' }
+      | { type: 'decrement' }
   },
   context: {
     game: 'wait',
@@ -116,7 +117,7 @@ const gameMachine = createMachine({
       ])
     ]),
     board: Array.from({ length: INIT_SQUARE }, () => createEmptySquare(INIT_SQUARE)),
-    size: 3,
+    size: INIT_SQUARE,
     activeIdx: { outerColIdx: -1, outerRowIdx: -1 }
   },
   on: {
@@ -258,7 +259,66 @@ const gameMachine = createMachine({
         }
       })
     },
-    setSize: { actions: assign({}) }
+    setSize: {
+      guard: ({ context, event }) => {
+        if (context.game === 'wait' && event.value > INIT_SQUARE) return true
+        else return false
+      },
+      actions: assign({
+        size: ({ event }) => {
+          return event.value
+        },
+        square: ({ event }) => {
+          return Array.from({ length: event.value }, () => [
+            ...Array.from({ length: event.value }, () => [
+              ...Array.from({ length: event.value }, () => createEmptySquare(event.value))
+            ])
+          ])
+        },
+        board: ({ event }) =>
+          Array.from({ length: event.value }, () => createEmptySquare(event.value))
+      })
+    },
+    increment: {
+      guard: ({ context }) => {
+        if (context.game === 'wait') return true
+        else return false
+      },
+      actions: assign({
+        size: ({ context }) => {
+          return context.size + 1
+        },
+        square: ({ context }) => {
+          return Array.from({ length: context.size + 1 }, () => [
+            ...Array.from({ length: context.size + 1 }, () => [
+              ...Array.from({ length: context.size + 1 }, () => createEmptySquare(context.size + 1))
+            ])
+          ])
+        },
+        board: ({ context }) =>
+          Array.from({ length: context.size + 1 }, () => createEmptySquare(context.size + 1))
+      })
+    },
+    decrement: {
+      guard: ({ context }) => {
+        if (context.game === 'wait' && context.size > INIT_SQUARE) return true
+        else return false
+      },
+      actions: assign({
+        size: ({ context }) => {
+          return context.size - 1
+        },
+        square: ({ context }) => {
+          return Array.from({ length: context.size - 1 }, () => [
+            ...Array.from({ length: context.size - 1 }, () => [
+              ...Array.from({ length: context.size - 1 }, () => createEmptySquare(context.size - 1))
+            ])
+          ])
+        },
+        board: ({ context }) =>
+          Array.from({ length: context.size - 1 }, () => createEmptySquare(context.size - 1))
+      })
+    }
   }
 })
 
@@ -278,6 +338,14 @@ function restart() {
 
 function toggle() {
   send({ type: 'toggle' })
+}
+
+function increment() {
+  send({ type: 'increment' })
+}
+
+function decrement() {
+  send({ type: 'decrement' })
 }
 
 function move(innerColId: number, innerRowIdx: number, outerColIdx: number, outerRowIdx: number) {
