@@ -4,7 +4,11 @@
       <h3>보드 사이즈</h3>
       <div class="spinner">
         <!-- @todo: 비활성화 상태 포함하기 -->
-        <button class="number-btn left-round" @click="decrement" tabindex="-1">
+        <button
+          :class="{ 'number-btn': true, 'left-round': true }"
+          @click="decrement"
+          tabindex="-1"
+        >
           <IconMinus color="#1F2937" />
         </button>
         <input
@@ -28,7 +32,7 @@
     <ul class="outer-row">
       <li v-for="(outerRow, outerRowIdx) in snapshot.context.square" :key="outerRowIdx">
         <ul class="outer-col">
-          <li v-for="(outerCol, outerColIdx) in outerRow" :key="outerColIdx">
+          <li class="board-item" v-for="(outerCol, outerColIdx) in outerRow" :key="outerColIdx">
             <ul class="inner-row">
               <div v-if="snapshot.context.board[outerRowIdx][outerColIdx] !== 'empty'">
                 <IconX
@@ -184,8 +188,13 @@ const gameMachine = createMachine({
           if (context.turn === 'O') return 'X'
           else return 'O'
         },
-        activeIdx: ({ event }) => {
-          return { outerColIdx: event.value.innerColIdx, outerRowIdx: event.value.innerRowIdx }
+        activeIdx: ({ event, context }) => {
+          // 데드락 풀기
+          // empty가 아니면 전체로 초기화
+          console.log(context.board[event.value.innerColIdx][event.value.innerColIdx])
+          if (context.board[event.value.innerColIdx][event.value.innerColIdx] === 'empty')
+            return { outerColIdx: event.value.innerColIdx, outerRowIdx: event.value.innerRowIdx }
+          else return { outerColIdx: -1, outerRowIdx: -1 }
         },
         square: ({ event, context }) => {
           if (
@@ -365,36 +374,48 @@ function decrement() {
 function move(innerColId: number, innerRowIdx: number, outerColIdx: number, outerRowIdx: number) {
   send({ type: 'move', value: { innerColIdx: innerColId, innerRowIdx, outerColIdx, outerRowIdx } })
 }
+
+const squareColor50: Record<Player, string> = { X: '#FEF2F2', O: '#EFF6FF' } as const
+const squareColor100: Record<Player, string> = { X: '#FEE2E2', O: '#DBEAFE' } as const
 </script>
 
 <style scoped lang="scss">
 .board {
   min-height: 100vh;
-}
-.outer-col {
   display: flex;
-  gap: 2rem;
-}
-
-.outer-row {
-  display: flex;
-  gap: 1.75rem;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-}
-
-.inner-col {
-  display: flex;
-  gap: 1rem;
-}
-
-.inner-row {
-  display: flex;
-  gap: 0.75rem;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  .outer-col {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .outer-row {
+    display: flex;
+    gap: 1.75rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .board-item {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .inner-col {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .inner-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .square-btn {
@@ -407,11 +428,11 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
   justify-content: center;
   border-radius: 0.5rem;
   &:hover {
-    background-color: #e5e7eb;
+    background-color: v-bind('squareColor50[snapshot.context.turn]');
     cursor: pointer;
   }
   &:active {
-    background-color: #d1d5db;
+    background-color: v-bind('squareColor100[snapshot.context.turn]');
   }
 }
 
@@ -462,6 +483,9 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
         justify-content: center;
         background-color: #f3f4f6;
         &:hover {
+          /* snapshot.value.context.turn */
+          /* background-color: #EFF6FF; bg-blue-50 */
+          /* background-color: #FEF2F2; bg-red-50 */
           background-color: #e5e7eb;
           cursor: pointer;
         }

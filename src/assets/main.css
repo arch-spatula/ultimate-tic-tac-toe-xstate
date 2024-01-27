@@ -39,6 +39,7 @@ a {
 }
 li {
   list-style: none;
+  width: 100%;
 }
 /* input {
   appearance: none;
