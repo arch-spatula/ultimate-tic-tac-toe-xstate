@@ -1,23 +1,30 @@
 <template>
-  <div>현재 게임 상태: {{ snapshot.context.game }}</div>
-  <div>
-    <div>
-      <button @click="start">start</button>
+  <div class="container" v-if="snapshot.context.game === 'wait'">
+    <div class="modal">
+      <h3>보드 사이즈</h3>
+      <div class="spinner">
+        <!-- @todo: 비활성화 상태 포함하기 -->
+        <button class="number-btn left-round" @click="decrement" tabindex="-1">
+          <IconMinus color="#1F2937" />
+        </button>
+        <input
+          class="size-input"
+          type="number"
+          :value="snapshot.context.size"
+          @change="setSize"
+          tabindex="-1"
+          ref="inputRef"
+        />
+        <button class="number-btn right-round" @click="increment" tabindex="-1">
+          <IconPlus color="#1F2937" />
+        </button>
+      </div>
+      <button class="start-btn" @click="start">게임 시작</button>
     </div>
-    <div>
-      <button @click="decision">decision</button>
-    </div>
-    <div>
-      <button @click="restart">restart</button>
-    </div>
+    <div class="overlay"></div>
   </div>
-  <div>현재 플레이어 턴: {{ snapshot.context.turn }}</div>
-  <div>
-    <button @click="increment">increment</button>
-    <button @click="decrement">decrement</button>
-  </div>
+  <!-- @todo: 세로 가운데 정렬 -->
   <div class="board">
-    <div>보드</div>
     <ul class="outer-row">
       <li v-for="(outerRow, outerRowIdx) in snapshot.context.square" :key="outerRowIdx">
         <ul class="outer-col">
@@ -64,7 +71,8 @@
 <script setup lang="ts">
 import { createMachine, assign } from 'xstate'
 import { useMachine } from '@xstate/vue'
-import { IconCircle, IconX } from '@tabler/icons-vue'
+import { IconCircle, IconX, IconPlus, IconMinus } from '@tabler/icons-vue'
+import { ref } from 'vue'
 
 type Player = 'O' | 'X'
 
@@ -261,7 +269,7 @@ const gameMachine = createMachine({
     },
     setSize: {
       guard: ({ context, event }) => {
-        if (context.game === 'wait' && event.value > INIT_SQUARE) return true
+        if (context.game === 'wait' && event.value >= INIT_SQUARE) return true
         else return false
       },
       actions: assign({
@@ -324,6 +332,8 @@ const gameMachine = createMachine({
 
 const { send, snapshot } = useMachine(gameMachine)
 
+const inputRef = ref<HTMLInputElement | null>(null)
+
 function start() {
   send({ type: 'start' })
 }
@@ -336,16 +346,20 @@ function restart() {
   send({ type: 'restart' })
 }
 
-function toggle() {
-  send({ type: 'toggle' })
+function setSize(e: Event) {
+  const size = parseInt((e.target as HTMLInputElement).value)
+  if (size < 3) send({ type: 'setSize', value: 3 })
+  else send({ type: 'setSize', value: size })
 }
 
 function increment() {
   send({ type: 'increment' })
+  if (inputRef.value) inputRef.value.focus()
 }
 
 function decrement() {
   send({ type: 'decrement' })
+  if (snapshot.value.context.size > 3 && inputRef.value) inputRef.value.focus()
 }
 
 function move(innerColId: number, innerRowIdx: number, outerColIdx: number, outerRowIdx: number) {
@@ -354,6 +368,9 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
 </script>
 
 <style scoped lang="scss">
+.board {
+  min-height: 100vh;
+}
 .outer-col {
   display: flex;
   gap: 2rem;
@@ -400,5 +417,93 @@ function move(innerColId: number, innerRowIdx: number, outerColIdx: number, oute
 
 .active-board {
   background-color: #f9fafb;
+}
+
+.container {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  .modal {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    width: 30rem;
+    height: 30rem;
+    background-color: #ffffff;
+    border-radius: 1.5rem;
+
+    .start-btn {
+      height: 3.75rem;
+      padding: 0.5rem 2rem;
+      border-radius: 0.5rem;
+      font-size: larger;
+      background-color: #f3f4f6;
+      &:hover {
+        background-color: #e5e7eb;
+        cursor: pointer;
+      }
+      &:active {
+        background-color: #d1d5db;
+      }
+    }
+
+    .spinner {
+      display: flex;
+      flex-direction: row;
+      .number-btn {
+        height: 3.75rem;
+        width: 3.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f3f4f6;
+        &:hover {
+          background-color: #e5e7eb;
+          cursor: pointer;
+        }
+        &:active {
+          background-color: #d1d5db;
+        }
+      }
+
+      .size-input {
+        height: 3.75rem;
+        text-align: center;
+        font-size: large;
+      }
+
+      .right-round {
+        border-radius: 0 0.5rem 0.5rem 0;
+      }
+
+      .left-round {
+        border-radius: 0.5rem 0 0 0.5rem;
+      }
+
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        /* display: none; <- Crashes Chrome on hover */
+        -webkit-appearance: none;
+        margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+        outline: none;
+      }
+      input[type='number'] {
+        /* Firefox */
+        appearance: textfield;
+        /* -moz-appearance: textfield; */
+        outline: none;
+      }
+    }
+  }
+
+  .overlay {
+    background-color: #00000004;
+    width: 100vw;
+    height: 100vh;
+  }
 }
 </style>
